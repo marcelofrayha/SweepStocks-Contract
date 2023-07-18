@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13 .0;
 
-import "../node_modules/@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "../node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
-import {APIConsumer, ConfirmedOwner} from "./ChainlinkConsumer.sol";
+import '../node_modules/@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
+import '../node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol';
+import {APIConsumer, ConfirmedOwner} from './ChainlinkConsumer.sol';
 
 error NotEnoughValue();
 error NotActive();
@@ -56,26 +56,26 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         payable
         APIConsumer(_league)
         ERC1155(
-            "https://ipfs.io/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn"
+            'https://ipfs.io/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
         )
     {
         if (
             keccak256(abi.encodePacked(_league)) !=
-            keccak256(abi.encodePacked("germany")) &&
+            keccak256(abi.encodePacked('germany')) &&
             keccak256(abi.encodePacked(_league)) !=
-            keccak256(abi.encodePacked("brazil")) &&
+            keccak256(abi.encodePacked('brazil')) &&
             keccak256(abi.encodePacked(_league)) !=
-            keccak256(abi.encodePacked("spain")) &&
+            keccak256(abi.encodePacked('spain')) &&
             keccak256(abi.encodePacked(_league)) !=
-            keccak256(abi.encodePacked("italy")) &&
+            keccak256(abi.encodePacked('italy')) &&
             keccak256(abi.encodePacked(_league)) !=
-            keccak256(abi.encodePacked("portugal")) &&
+            keccak256(abi.encodePacked('portugal')) &&
             keccak256(abi.encodePacked(_league)) !=
-            keccak256(abi.encodePacked("england")) &&
+            keccak256(abi.encodePacked('england')) &&
             keccak256(abi.encodePacked(_league)) !=
-            keccak256(abi.encodePacked("argentina")) &&
+            keccak256(abi.encodePacked('argentina')) &&
             keccak256(abi.encodePacked(_league)) !=
-            keccak256(abi.encodePacked("france"))
+            keccak256(abi.encodePacked('france'))
         ) {
             revert InvalidLeague();
         }
@@ -99,13 +99,13 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         uint size;
         if (
             keccak256(abi.encodePacked(league)) ==
-            keccak256(abi.encodePacked("germany")) ||
+            keccak256(abi.encodePacked('germany')) ||
             keccak256(abi.encodePacked(league)) ==
-            keccak256(abi.encodePacked("portugal"))
+            keccak256(abi.encodePacked('portugal'))
         ) size = 18;
         else if (
             keccak256(abi.encodePacked(league)) ==
-            keccak256(abi.encodePacked("argentina"))
+            keccak256(abi.encodePacked('argentina'))
         ) size = 28;
         else size = 20;
         for (uint i = 1; i <= size; i++) {
@@ -145,13 +145,13 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         uint size;
         if (
             keccak256(abi.encodePacked(league)) ==
-            keccak256(abi.encodePacked("germany")) ||
+            keccak256(abi.encodePacked('germany')) ||
             keccak256(abi.encodePacked(league)) ==
-            keccak256(abi.encodePacked("portugal"))
+            keccak256(abi.encodePacked('portugal'))
         ) size = 18;
         else if (
             keccak256(abi.encodePacked(league)) ==
-            keccak256(abi.encodePacked("argentina"))
+            keccak256(abi.encodePacked('argentina'))
         ) size = 28;
         else size = 20;
         uint[] memory mintPriceList = new uint[](size);
@@ -166,13 +166,13 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         uint[20] memory getAllSupply;
         if (
             keccak256(abi.encodePacked(league)) ==
-            keccak256(abi.encodePacked("germany")) ||
+            keccak256(abi.encodePacked('germany')) ||
             keccak256(abi.encodePacked(league)) ==
-            keccak256(abi.encodePacked("portugal"))
+            keccak256(abi.encodePacked('portugal'))
         ) size = 18;
         else if (
             keccak256(abi.encodePacked(league)) ==
-            keccak256(abi.encodePacked("argentina"))
+            keccak256(abi.encodePacked('argentina'))
         ) size = 28;
         else size = 20;
         for (uint i = 0; i < size; i++) {
@@ -314,15 +314,15 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         );
         (bool success, ) = address(this).call(
             abi.encodeWithSignature(
-                "safeTransferFrom(address,address,uint256,uint256,bytes)",
+                'safeTransferFrom(address,address,uint256,uint256,bytes)',
                 nftOwner,
                 msg.sender,
                 id,
                 amount,
-                ""
+                ''
             )
         );
-        require(success, "Function call failed");
+        require(success, 'Function call failed');
         if (balanceOf(nftOwner, id) == 0) calculateAllPrices();
         emit TokenBought(
             id,
@@ -372,17 +372,17 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         address garbage = 0x8431717927C4a3343bCf1626e7B5B1D31E240406;
         if (balanceOf(msg.sender, winner) != 0) {
             balance = balanceOf(msg.sender, winner);
-            _safeTransferFrom(msg.sender, garbage, winner, balance, "");
+            _safeTransferFrom(msg.sender, garbage, winner, balance, '');
             amount = (payout[0] * balance) / supply[0];
         }
         if (balanceOf(msg.sender, winner2) != 0) {
             balance = balanceOf(msg.sender, winner2);
-            _safeTransferFrom(msg.sender, garbage, winner2, balance, "");
+            _safeTransferFrom(msg.sender, garbage, winner2, balance, '');
             amount += (payout[1] * balance) / supply[1];
         }
         if (balanceOf(msg.sender, winner3) != 0) {
             balance = balanceOf(msg.sender, winner3);
-            _safeTransferFrom(msg.sender, garbage, winner3, balance, "");
+            _safeTransferFrom(msg.sender, garbage, winner3, balance, '');
             amount += (payout[2] * balance) / supply[2];
         }
         payoutDefined = true;
