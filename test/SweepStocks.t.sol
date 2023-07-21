@@ -40,17 +40,17 @@ contract SweepStocksTest is Test {
 
     function testMint() public {
         // hoax(address(0), ETH_BALANCE); //Create sender with eth balance
-        hoax(address(1), 1e18);
-        sweepStocks.mint{value: 1e18}(address(1), 1, 10, '');
-        assertEq(sweepStocks.balanceOf(address(1), 1), 10);
+        vm.prank(USER);
+        sweepStocks.mint{value: 1e18}(USER, 1, 10, '');
+        assertEq(sweepStocks.balanceOf(USER, 1), 10);
     }
 
     function testBuyToken() public {
-        hoax(msg.sender, 1e18);
-        sweepStocks.mint{value: 1e18}(msg.sender, 1, 10, '');
-        console.log(sweepStocks.balanceOf(msg.sender, 1));
+        vm.startPrank(USER);
+        sweepStocks.mint{value: 1e18}(USER, 1, 10, '');
         sweepStocks.setTokenPrice(1, 1e17);
-        sweepStocks.buyToken{value: 1e18}(1, 10, msg.sender);
+        sweepStocks.buyToken{value: 1e18}(1, 10, USER);
+        vm.stopPrank();
     }
 }
 // }

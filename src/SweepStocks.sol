@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13 .0;
 
-import '../node_modules/@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
-import '../node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol';
+import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
+import '@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol';
 import {APIConsumer, ConfirmedOwner} from './ChainlinkConsumer.sol';
 
 error NotEnoughValue();
@@ -12,6 +12,7 @@ error NotOwner();
 error MintCap();
 error BuyCap();
 error NFTReachedCap();
+error CallFailed();
 
 /// @custom:security-contact marcelofrayha@gmail.com
 contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
@@ -256,11 +257,6 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         winner = 1000;
     }
 
-    function timeLeft() public view returns (uint) {
-        uint time = (creationTime + 20 days - block.timestamp);
-        return time >= 0 ? time / 86400 : 0;
-    }
-
     // Updates the list of all the owners of a NFT
     function updateOwnersList(uint id, address account) private {
         bool inTheList = false;
@@ -297,7 +293,11 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
             revert NotActive();
         }
         // require(winner == 0, "We already have a winner, the market is closed");
-        if (msg.value != transferPrice[id][nftOwner] * amount) {
+        if (
+            msg.value != transferPrice[id][nftOwner] * amount &&
+            msg.value != (transferPrice[id][nftOwner] * amount) + 1 &&
+            msg.value != (transferPrice[id][nftOwner] * amount) - 1
+        ) {
             revert NotEnoughValue();
         }
         // require(
@@ -307,6 +307,8 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
             revert BuyCap();
         }
         // require(amount <= balanceOf(nftOwner, id), "You can't buy that much");
+        if (!isApprovedForAll(msg.sender, address(this)))
+            setApprovalForAll(address(this), true);
         uint earnings = ((transferPrice[id][nftOwner] * 999) / 1000) * amount;
         payable(nftOwner).transfer(earnings);
         payable(_owner).transfer(
@@ -322,7 +324,10 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
                 ''
             )
         );
-        require(success, 'Function call failed');
+        if (!success) {
+            revert CallFailed();
+        }
+        // require(success, 'Function call failed');
         if (balanceOf(nftOwner, id) == 0) calculateAllPrices();
         emit TokenBought(
             id,
@@ -399,6 +404,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         bytes memory data
     ) internal override {
         super._safeTransferFrom(from, to, id, amount, data);
+
         updateOwnersList(id, to);
     }
 
