@@ -4,9 +4,27 @@ pragma solidity ^0.8.13 .0;
 import '@chainlink/contracts/src/v0.8/ChainlinkClient.sol';
 import '@chainlink/contracts/src/v0.8/ConfirmedOwner.sol';
 import '@chainlink/contracts/src/v0.8/AutomationCompatible.sol';
+import {LinkTokenInterface} from '@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol';
 
 error UpkeepNotNeeded();
 error YouHaveToWait(uint time);
+
+struct RegistrationParams {
+    string name;
+    bytes encryptedEmail;
+    address upkeepContract;
+    uint32 gasLimit;
+    address adminAddress;
+    bytes checkData;
+    bytes offchainConfig;
+    uint96 amount;
+}
+
+interface KeeperRegistrarInterface {
+    function registerUpkeep(
+        RegistrationParams calldata requestParams
+    ) external returns (uint256);
+}
 
 contract APIConsumer is
     ChainlinkClient,
@@ -14,8 +32,12 @@ contract APIConsumer is
     AutomationCompatibleInterface
 {
     // using StringUtils for string;
+    LinkTokenInterface public constant i_link =
+        LinkTokenInterface(0x326C977E6efc84E512bB9C30f76E30c160eD06FB);
+    KeeperRegistrarInterface public constant i_registrar =
+        KeeperRegistrarInterface(0x57A4a13b35d25EE78e084168aBaC5ad360252467);
     using Chainlink for Chainlink.Request;
-    bool private stopUpkeep = false;
+    bool public stopUpkeep = false;
     uint256 public winner;
     uint256 public winner2;
     uint256 public winner3;
@@ -48,21 +70,38 @@ contract APIConsumer is
         i_fee = (1 * LINK_DIVISIBILITY) / 10; // 0,1 * 10**18
     }
 
+    function registerAndPredictID() public {
+        // LINK must be approved for transfer - this can be done every time or once
+        // with an infinite approval
+        RegistrationParams memory params = RegistrationParams(
+            league,
+            '',
+            address(this),
+            2500000,
+            msg.sender,
+            '',
+            '',
+            uint96(i_fee * 9)
+        );
+        i_link.approve(address(i_registrar), params.amount);
+        i_registrar.registerUpkeep(params);
+    }
+
     function timeLeft() public view returns (uint) {
         uint time = (i_creationTime + 3 days - block.timestamp);
-        return time >= 0 ? time / 86400 : 0;
+        return time > 0 ? time / 86400 : 0;
     }
 
     function checkUpkeep(
         bytes memory /*checkData*/
     ) public view returns (bool upkeepNeeded, bytes memory /*performData */) {
-        if (timeLeft() == 0 && !stopUpkeep) upkeepNeeded = true;
+        if (timeLeft() > 0 && !stopUpkeep) upkeepNeeded = true;
         else upkeepNeeded = false;
-        return (upkeepNeeded, '0x0');
+        return (upkeepNeeded, '');
     }
 
     function performUpkeep(bytes calldata /*performData */) public {
-        if (timeLeft() != 0 || stopUpkeep) revert UpkeepNotNeeded();
+        // if (timeLeft() != 0 || stopUpkeep) revert UpkeepNotNeeded();
         (bool upkeepNeeded, ) = checkUpkeep('');
         if (!upkeepNeeded) {
             revert UpkeepNotNeeded();
@@ -78,7 +117,9 @@ contract APIConsumer is
      */
 
     function requestWinner() public returns (bytes32 requestId) {
-        if (timeLeft() != 0) revert YouHaveToWait(timeLeft());
+        // if (timeLeft() != 0) revert YouHaveToWait(
+        //     timeLeft()
+        // );
         // if (block.timestamp < i_creationTime + 200 days) { revert(); }
         // require(block.timestamp >= i_creationTime + 200 days);
         Chainlink.Request memory req = buildChainlinkRequest(

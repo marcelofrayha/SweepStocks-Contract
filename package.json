@@ -1,7 +1,8 @@
 {
   "dependencies": {
     "@chainlink/contracts": "^0.6.1",
-    "@openzeppelin/contracts": "^4.9.2"
+    "@openzeppelin/contracts": "^4.9.2",
+    "slither": "^0.2.2"
   },
   "scripts": {
     "lint": "npm lint:sol && npm prettier:check",
