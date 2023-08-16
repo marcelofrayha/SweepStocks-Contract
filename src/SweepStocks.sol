@@ -13,14 +13,12 @@ error MintCap();
 error BuyCap();
 error NFTReachedCap();
 error CallFailed();
-error ReentrantCall();
 
 /// @custom:security-contact marcelofrayha@gmail.com
 contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     uint[3] public payout;
     uint[3] public supply;
     bool private payoutDefined = false;
-    bool private reentrancyGuard;
     address private immutable _owner; //contract owner - this will be a multisig or zk wallet
     mapping(uint => address[]) public tokenOwners;
     // Price to create a new NFT, this is handled by the contract
@@ -52,13 +50,6 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     );
 
     event WinnerPaid(address indexed owner, uint indexed amount);
-
-    modifier nonReentrant() {
-        if (reentrancyGuard) revert ReentrantCall();
-        reentrancyGuard = true;
-        _;
-        reentrancyGuard = false;
-    }
 
     constructor(
         string memory _league
@@ -110,7 +101,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         else return 20;
     }
 
-    function calculateAllPrices() private nonReentrant {
+    function calculateAllPrices() private {
         delete priceDetails;
         uint size = calculateLeagueSize();
         for (uint i = 1; i <= size; i++) {
@@ -148,6 +139,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         returns (uint[] memory _mintPriceList)
     {
         uint size = calculateLeagueSize();
+
         uint[] memory mintPriceList = new uint[](size);
         for (uint i = 0; i < size; i++) {
             mintPriceList[i] = mintPrice[i + 1];
@@ -158,6 +150,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     function getSupply() public view returns (uint[20] memory) {
         uint[20] memory getAllSupply;
         uint size = calculateLeagueSize();
+
         for (uint i = 0; i < size; i++) {
             getAllSupply[i] = totalSupply(i + 1);
         }
@@ -170,7 +163,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         uint256 id,
         uint256 amount,
         bytes memory data
-    ) external payable nonReentrant {
+    ) external payable {
         if (winner != 0) {
             revert NotActive();
         }
@@ -184,12 +177,14 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         if (msg.value < mintPrice[id] * amount) {
             revert NotEnoughValue();
         }
+        //require (msg.value >= mintPrice[id]*amount, "Send more money");
+        _mint(account, id, amount, data);
         if (!isApprovedForAll(msg.sender, address(this)))
             setApprovalForAll(address(this), true);
         mintPrice[id] += amount * 0.000013 ether;
         updateOwnersList(id, account);
         setTokenPrice(id, 1000000 ether);
-        _mint(account, id, amount, data);
+        // tokenOwners[id][account] += amount;
     }
 
     //Creates a batch of NFTs
@@ -198,7 +193,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory data
-    ) external payable nonReentrant {
+    ) external payable {
         if (winner != 0) {
             revert NotActive();
         }
@@ -230,7 +225,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
 
     //Allow destroying the contract after 400 days of its creation
     function destroy() public {
-        require(block.timestamp >= i_creationTime + 350 days);
+        // require(block.timestamp >= creationTime + 350 days);
         payable(_owner).transfer(address(this).balance);
         winner = 1000;
     }
@@ -266,11 +261,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     }
 
     //Allow user to buy someone else's NFT
-    function buyToken(
-        uint id,
-        uint amount,
-        address nftOwner
-    ) public payable nonReentrant {
+    function buyToken(uint id, uint amount, address nftOwner) public payable {
         if (winner != 0) {
             revert NotActive();
         }
@@ -287,7 +278,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         if (!isApprovedForAll(msg.sender, address(this)))
             setApprovalForAll(address(this), true);
         if (balanceOf(nftOwner, id) == 0) calculateAllPrices();
-        uint earnings = (((transferPrice[id][nftOwner] * 999) * amount) / 1000);
+        uint earnings = ((transferPrice[id][nftOwner] * 999) / 1000) * amount;
         payable(nftOwner).transfer(earnings);
         payable(_owner).transfer(
             (((transferPrice[id][nftOwner] * 1) * amount) / 1000)
@@ -332,10 +323,11 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
 
     //Pays the holder of a NFT representing the champion,
     // the 10th place and the 17th place
-    function payWinner() public payable nonReentrant {
+    function payWinner() public payable {
         if (winner == 0) {
             revert NotActive();
         }
+        // require (winner != 0, "There is no winner");
         if (
             balanceOf(msg.sender, winner) == 0 ||
             balanceOf(msg.sender, winner2) == 0 ||
@@ -343,6 +335,8 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         ) {
             revert NotOwner();
         }
+        // require (balanceOf(msg.sender, winner) != 0 || balanceOf(msg.sender, winner2) != 0
+        // || balanceOf(msg.sender, winner3) != 0, "You don't have this NFT");
         if (payoutDefined == false) calculatePayout();
         uint balance;
         uint amount;
@@ -377,6 +371,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         bytes memory data
     ) internal override {
         super._safeTransferFrom(from, to, id, amount, data);
+
         updateOwnersList(id, to);
     }
 
