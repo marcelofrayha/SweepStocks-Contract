@@ -2,10 +2,11 @@
 pragma solidity ^0.8.13;
 
 import {Test, console} from 'forge-std/Test.sol';
+import {StdInvariant} from 'forge-std/StdInvariant.sol';
 import {SweepStocks} from '../src/SweepStocks.sol';
 import {DeploySweepStocks} from '../script/DeploySweepStocks.s.sol';
 
-contract SweepStocksTest is Test {
+contract SweepStocksTest is StdInvariant, Test {
     SweepStocks public sweepStocks;
 
     address USER = makeAddr('user');
@@ -15,6 +16,12 @@ contract SweepStocksTest is Test {
         vm.deal(USER, STARTING_BALANCE);
         DeploySweepStocks deploySweepStocks = new DeploySweepStocks();
         sweepStocks = deploySweepStocks.run();
+        targetContract(address(sweepStocks));
+    }
+
+    // Statefull fuzz testing
+    function invariant_testWinnerIsZero() public view {
+        assert(sweepStocks.winner() == 0);
     }
 
     // function testOwner() public {

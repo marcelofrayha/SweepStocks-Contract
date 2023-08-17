@@ -42,7 +42,7 @@ contract APIConsumer is
     uint256 public winner2;
     uint256 public winner3;
     uint public immutable i_creationTime;
-    uint public creationBlock;
+    uint public immutable i_creationBlock;
     bytes32 private immutable i_jobId;
     uint256 private immutable i_fee;
     // string private URL;
@@ -59,7 +59,7 @@ contract APIConsumer is
         // string memory endpoint = "/standings";
         league = _league;
         i_creationTime = block.timestamp;
-        creationBlock = block.number;
+        i_creationBlock = block.number;
         // URL = baseURL.concat(league).concat(endpoint);
         // setChainlinkOracle(0xc7086899d02Cdd5C1B0cDa32CB50aaB9a2edC416); //Polygon Oracle run by me
         setChainlinkOracle(0x7ca7215c6B8013f249A195cc107F97c4e623e5F5); //Polygon Oracle run by OracleSpace Labs
@@ -88,14 +88,14 @@ contract APIConsumer is
     }
 
     function timeLeft() public view returns (uint) {
-        uint time = (i_creationTime + 3 days - block.timestamp);
+        uint time = (i_creationTime + 2 days - block.timestamp);
         return time > 0 ? time / 86400 : 0;
     }
 
     function checkUpkeep(
         bytes memory /*checkData*/
     ) public view returns (bool upkeepNeeded, bytes memory /*performData */) {
-        if (timeLeft() > 0 && !stopUpkeep) upkeepNeeded = true;
+        if (timeLeft() == 0 && !stopUpkeep) upkeepNeeded = true;
         else upkeepNeeded = false;
         return (upkeepNeeded, '');
     }

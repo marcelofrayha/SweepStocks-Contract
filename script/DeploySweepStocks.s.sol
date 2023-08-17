@@ -23,6 +23,7 @@ contract DeploySweepStocks is Script {
         uint256 deployerPrivateKey = vm.envUint('PRIVATE_KEY');
         vm.startBroadcast(deployerPrivateKey);
         SweepStocks sweepStocks = new SweepStocks(league);
+        console.log(address(sweepStocks));
         bool success = LinkTokenInterface(token).transfer(
             address(sweepStocks),
             1e17

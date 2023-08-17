@@ -87,6 +87,10 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         return block.number;
     }
 
+    function getCreationBlockNumber() public view returns (uint) {
+        return i_creationBlock;
+    }
+
     function calculateLeagueSize() private view returns (uint leagueSize) {
         if (
             keccak256(abi.encodePacked(league)) ==
@@ -223,9 +227,9 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
             setApprovalForAll(address(this), true);
     }
 
-    //Allow destroying the contract after 400 days of its creation
+    //Allow destroying the contract after 350 days of its creation
     function destroy() public {
-        // require(block.timestamp >= creationTime + 350 days);
+        // require(block.timestamp >= i_creationTime + 350 days);
         payable(_owner).transfer(address(this).balance);
         winner = 1000;
     }
@@ -278,7 +282,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         if (!isApprovedForAll(msg.sender, address(this)))
             setApprovalForAll(address(this), true);
         if (balanceOf(nftOwner, id) == 0) calculateAllPrices();
-        uint earnings = ((transferPrice[id][nftOwner] * 999) / 1000) * amount;
+        uint earnings = ((amount * transferPrice[id][nftOwner] * 999) / 1000);
         payable(nftOwner).transfer(earnings);
         payable(_owner).transfer(
             (((transferPrice[id][nftOwner] * 1) * amount) / 1000)
