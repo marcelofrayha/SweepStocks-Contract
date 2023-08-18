@@ -26,9 +26,11 @@ contract DeploySweepStocks is Script {
         console.log(address(sweepStocks));
         bool success = LinkTokenInterface(token).transfer(
             address(sweepStocks),
-            1e17
+            1e18
         );
         if (!success) revert TransferFailed();
+        console.log(LinkTokenInterface(token).balanceOf(address(sweepStocks)));
+        sweepStocks.registerAndPredictID();
         console.log(LinkTokenInterface(token).balanceOf(address(sweepStocks)));
         vm.stopBroadcast();
         return sweepStocks;
