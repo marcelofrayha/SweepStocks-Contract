@@ -81,14 +81,14 @@ contract APIConsumer is
             msg.sender,
             '',
             '',
-            uint96(i_fee * 9)
+            uint96(i_fee * 7)
         );
         i_link.approve(address(i_registrar), params.amount);
         i_registrar.registerUpkeep(params);
     }
 
     function timeLeft() public view returns (uint) {
-        uint time = (i_creationTime + 2 days - block.timestamp);
+        uint time = (i_creationTime + 20 days - block.timestamp);
         return time > 0 ? time / 86400 : 0;
     }
 

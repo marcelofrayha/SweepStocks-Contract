@@ -4,6 +4,7 @@ pragma solidity ^0.8.13 .0;
 
 import {Script, console} from 'forge-std/Script.sol';
 import {SweepStocks} from '../src/SweepStocks.sol';
+import {Factory} from '../src/ContractFactory.sol';
 import {HelperConfig} from './HelperConfig.s.sol';
 import {LinkTokenInterface} from 'node_modules/@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol';
 
@@ -22,7 +23,11 @@ contract DeploySweepStocks is Script {
             .activeNetworkConfig();
         uint256 deployerPrivateKey = vm.envUint('PRIVATE_KEY');
         vm.startBroadcast(deployerPrivateKey);
-        SweepStocks sweepStocks = new SweepStocks(league);
+        Factory factory = new Factory(league);
+        console.log(address(factory));
+
+        SweepStocks sweepStocks = factory.createContract();
+        sweepStocks.acceptOwnership();
         console.log(address(sweepStocks));
         bool success = LinkTokenInterface(token).transfer(
             address(sweepStocks),

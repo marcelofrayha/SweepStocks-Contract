@@ -47,7 +47,7 @@ contract HelperConfig is Script {
             oracle: 0x7ca7215c6B8013f249A195cc107F97c4e623e5F5,
             token: 0x326C977E6efc84E512bB9C30f76E30c160eD06FB,
             jobId: '0bf991b9f60b4f72964c1e6afc34f099',
-            league: 'spain'
+            league: 'argentina'
         });
         return mumbaiConfig;
     }
@@ -59,8 +59,10 @@ contract HelperConfig is Script {
             oracle: 0x7ca7215c6B8013f249A195cc107F97c4e623e5F5,
             token: address(link),
             jobId: '0bf991b9f60b4f72964c1e6afc34f099',
-            league: 'brazil'
+            league: 'england'
         });
         return anvilConfig;
     }
 }
+
+// 0xb4a530D50E5d83AB6c401350F884E285f5c1D810 england factory
