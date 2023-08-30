@@ -16,8 +16,10 @@ contract Factory is ConfirmedOwner {
         league = _league;
     }
 
-    function createContract() public onlyOwner returns (SweepStocks) {
-        SweepStocks newInstance = new SweepStocks(league, msg.sender);
+    function createContract(
+        uint duration
+    ) public onlyOwner returns (SweepStocks) {
+        SweepStocks newInstance = new SweepStocks(league, msg.sender, duration);
         contractList.push(address(newInstance));
         return newInstance;
     }

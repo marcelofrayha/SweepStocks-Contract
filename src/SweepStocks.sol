@@ -56,10 +56,11 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
 
     constructor(
         string memory _league,
-        address _owner
+        address _owner,
+        uint _duration
     )
         payable
-        APIConsumer(_league)
+        APIConsumer(_league, _duration)
         ERC1155(
             'https://ipfs.io/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
         )

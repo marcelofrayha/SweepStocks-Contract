@@ -41,6 +41,7 @@ contract APIConsumer is
     uint256 public winner;
     uint256 public winner2;
     uint256 public winner3;
+    uint public immutable i_duration;
     uint public immutable i_creationTime;
     uint public immutable i_creationBlock;
     bytes32 private immutable i_jobId;
@@ -54,10 +55,14 @@ contract APIConsumer is
         uint256 winner3
     );
 
-    constructor(string memory _league) ConfirmedOwner(msg.sender) {
+    constructor(
+        string memory _league,
+        uint _duration
+    ) ConfirmedOwner(msg.sender) {
         // string memory baseURL = "http://api.football-data.org/v4/competitions/";
         // string memory endpoint = "/standings";
         league = _league;
+        i_duration = _duration;
         i_creationTime = block.timestamp;
         i_creationBlock = block.number;
         // URL = baseURL.concat(league).concat(endpoint);
@@ -81,31 +86,26 @@ contract APIConsumer is
             msg.sender,
             '',
             '',
-            uint96(i_fee * 7)
+            uint96(i_fee * 5)
         );
         i_link.approve(address(i_registrar), params.amount);
         i_registrar.registerUpkeep(params);
     }
 
     function timeLeft() public view returns (uint) {
-        uint time = (i_creationTime + 20 days - block.timestamp);
+        uint time = (i_creationTime + i_duration * 1 days - block.timestamp);
         return time > 0 ? time / 86400 : 0;
     }
 
     function checkUpkeep(
         bytes memory /*checkData*/
-    )
-        public
-        view
-        override
-        returns (bool upkeepNeeded, bytes memory /*performData */)
-    {
+    ) public view returns (bool upkeepNeeded, bytes memory /*performData */) {
         if (timeLeft() == 0 && !stopUpkeep) upkeepNeeded = true;
         else upkeepNeeded = false;
         return (upkeepNeeded, '');
     }
 
-    function performUpkeep(bytes calldata /*performData */) public override {
+    function performUpkeep(bytes calldata /*performData */) public {
         // if (timeLeft() != 0 || stopUpkeep) revert UpkeepNotNeeded();
         (bool upkeepNeeded, ) = checkUpkeep('');
         if (!upkeepNeeded) {

@@ -26,12 +26,12 @@ contract DeploySweepStocks is Script {
         Factory factory = new Factory(league);
         console.log(address(factory));
 
-        SweepStocks sweepStocks = factory.createContract();
+        SweepStocks sweepStocks = factory.createContract(250);
         sweepStocks.acceptOwnership();
         console.log(address(sweepStocks));
         bool success = LinkTokenInterface(token).transfer(
             address(sweepStocks),
-            1e18
+            6e17
         );
         if (!success) revert TransferFailed();
         console.log(LinkTokenInterface(token).balanceOf(address(sweepStocks)));
