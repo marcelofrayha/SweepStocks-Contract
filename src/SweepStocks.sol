@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13 .0;
 
-import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
-import '@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol';
+import {ERC1155} from '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
+import {ERC1155Supply} from '@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol';
 import {APIConsumer, ConfirmedOwner} from './ChainlinkConsumer.sol';
 
 error NotEnoughValue();
@@ -13,16 +13,13 @@ error MintCap();
 error BuyCap();
 error NFTReachedCap();
 error CallFailed();
-error InvalidId(uint leagueSize);
-
-// error YouCanOnlyBuy();
+error InvalidId();
 
 /// @custom:security-contact marcelofrayha@gmail.com
 contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     uint[3] public payout;
     uint[3] public supply;
     bool private payoutDefined = false;
-    // address private immutable _owner; //contract owner - this will be a multisig or zk wallet
     mapping(uint => address[]) public tokenOwners;
     // Price to create a new NFT, this is handled by the contract
     mapping(uint => uint) public mintPrice;
@@ -85,15 +82,15 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         ) {
             revert InvalidLeague();
         }
-        // _owner = msg.sender;
         transferOwnership(_owner);
+        initialMintValue();
     }
 
-    function getCurrentBlockNumber() public view returns (uint) {
+    function getCurrentBlockNumber() external view returns (uint) {
         return block.number;
     }
 
-    function getCreationBlockNumber() public view returns (uint) {
+    function getCreationBlockNumber() external view returns (uint) {
         return i_creationBlock;
     }
 
@@ -109,6 +106,13 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
             keccak256(abi.encodePacked('argentina'))
         ) return 28;
         else return 20;
+    }
+
+    function initialMintValue() private {
+        uint size = calculateLeagueSize();
+        for (uint i = 0; i < size; i++) {
+            mintPrice[i + 1] = (1 ether / 10);
+        }
     }
 
     function calculateAllPrices() private {
@@ -127,17 +131,17 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         }
     }
 
-    function getAllPrices() public view returns (PriceDetails[] memory) {
+    function getAllPrices() external view returns (PriceDetails[] memory) {
         return priceDetails;
     }
 
-    function getPoolPrize() public view returns (uint) {
+    function getPoolPrize() external view returns (uint) {
         return address(this).balance;
     }
 
-    function setURI(string memory newuri) external onlyOwner {
-        _setURI(newuri);
-    }
+    // function setURI(string memory newuri) external onlyOwner {
+    //     _setURI(newuri);
+    // }
 
     function tokenOwnersList(uint id) public view returns (address[] memory) {
         return tokenOwners[id];
@@ -157,7 +161,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         return mintPriceList;
     }
 
-    function getSupply() public view returns (uint[] memory) {
+    function getSupply() external view returns (uint[] memory) {
         uint size = calculateLeagueSize();
         uint[] memory getAllSupply = new uint[](size);
 
@@ -183,14 +187,16 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         if (amount > 1000) {
             revert MintCap();
         }
+        uint timeToEnd = timeLeft();
+        if (timeToEnd < i_duration / 2) {
+            revert NotActive();
+        }
         uint leagueSize = calculateLeagueSize();
-        if (id > leagueSize) revert InvalidId(leagueSize);
-        // if (timeLeft() < 60 days) revert YouCanOnlyBuy();
-        if (totalSupply(id) == 0) mintPrice[id] = (1 ether / 10);
+        if (id > leagueSize) revert InvalidId();
+        // if (totalSupply(id) == 0) mintPrice[id] = (1 ether / 10);
         if (msg.value < mintPrice[id] * amount) {
             revert NotEnoughValue();
         }
-        //require (msg.value >= mintPrice[id]*amount, "Send more money");
         _mint(account, id, amount, data);
         if (!isApprovedForAll(msg.sender, address(this)))
             setApprovalForAll(address(this), true);
@@ -212,26 +218,26 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         }
         // require(winner == 0, "Not active");
         // if (timeLeft() < 60 days) revert YouCanOnlyBuy();
+        uint timeToEnd = timeLeft();
+        if (timeToEnd < i_duration / 2) {
+            revert NotActive();
+        }
         uint msgValue = msg.value;
         uint leagueSize = calculateLeagueSize();
         for (uint i = 0; i < ids.length; i++) {
             if (amounts[i] + totalSupply(ids[i]) > 1000000) {
                 revert NFTReachedCap();
             }
-            // require(amounts[i] + totalSupply(ids[i]) <= 10000000, "The NFT reached its cap");
             if (amounts[i] > 1000) {
                 revert MintCap();
             }
-            // require(amounts[i] <= 100, "You can only mint 20 in the same transaction");
-            if (totalSupply(ids[i]) == 0) mintPrice[ids[i]] = (1 ether / 10);
+            // if (totalSupply(ids[i]) == 0) mintPrice[ids[i]] = (1 ether / 10);
             if (msgValue < mintPrice[ids[i]] * amounts[i]) {
                 revert NotEnoughValue();
             }
-            if (ids[i] > leagueSize) revert InvalidId(leagueSize);
+            if (ids[i] > leagueSize) revert InvalidId();
 
-            //    require (msg.value >= mintPrice[ids[i]]*amounts[i], "Send more money");
             mintPrice[ids[i]] += amounts[i] * 0.00013 ether;
-            // tokenOwners[ids[i]][to] += amounts[i];
             updateOwnersList(ids[i], to);
             setTokenPrice(ids[i], 1000000 ether);
         }

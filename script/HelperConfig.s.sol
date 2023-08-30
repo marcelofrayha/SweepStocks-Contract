@@ -47,7 +47,7 @@ contract HelperConfig is Script {
             oracle: 0x7ca7215c6B8013f249A195cc107F97c4e623e5F5,
             token: 0x326C977E6efc84E512bB9C30f76E30c160eD06FB,
             jobId: '0bf991b9f60b4f72964c1e6afc34f099',
-            league: 'france'
+            league: 'brazil'
         });
         return mumbaiConfig;
     }

@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13 .0;
 
-import '@chainlink/contracts/src/v0.8/ChainlinkClient.sol';
-import '@chainlink/contracts/src/v0.8/ConfirmedOwner.sol';
-import '@chainlink/contracts/src/v0.8/AutomationCompatible.sol';
+import {Chainlink, ChainlinkClient} from '@chainlink/contracts/src/v0.8/ChainlinkClient.sol';
+import {ConfirmedOwner} from '@chainlink/contracts/src/v0.8/ConfirmedOwner.sol';
+import {AutomationCompatibleInterface} from '@chainlink/contracts/src/v0.8/AutomationCompatible.sol';
 import {LinkTokenInterface} from '@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol';
 
 error UpkeepNotNeeded();
 error YouHaveToWait(uint time);
+error AlreadyHaveWinner();
 
 struct RegistrationParams {
     string name;
@@ -59,16 +60,16 @@ contract APIConsumer is
         string memory _league,
         uint _duration
     ) ConfirmedOwner(msg.sender) {
-        // string memory baseURL = "http://api.football-data.org/v4/competitions/";
-        // string memory endpoint = "/standings";
         league = _league;
         i_duration = _duration;
         i_creationTime = block.timestamp;
         i_creationBlock = block.number;
+        // string memory baseURL = "http://api.football-data.org/v4/competitions/";
+        // string memory endpoint = "/standings";
         // URL = baseURL.concat(league).concat(endpoint);
-        // setChainlinkOracle(0xc7086899d02Cdd5C1B0cDa32CB50aaB9a2edC416); //Polygon Oracle run by me
-        setChainlinkOracle(0x7ca7215c6B8013f249A195cc107F97c4e623e5F5); //Polygon Oracle run by OracleSpace Labs
         setChainlinkToken(0x326C977E6efc84E512bB9C30f76E30c160eD06FB); //Polygon LINK Token
+        setChainlinkOracle(0x7ca7215c6B8013f249A195cc107F97c4e623e5F5); //Polygon Oracle run by OracleSpace Labs
+        // setChainlinkOracle(0xc7086899d02Cdd5C1B0cDa32CB50aaB9a2edC416); //Polygon Oracle run by me
         //i_jobId = "3d2529ce26a74c9d9e593750d94950c9"; //single response job
         // i_jobId = "cd3a5f8dcac245e9a3ff58d59b445595"; //multi response job
         i_jobId = '0bf991b9f60b4f72964c1e6afc34f099'; //multi response job from Labs
@@ -93,7 +94,10 @@ contract APIConsumer is
     }
 
     function timeLeft() public view returns (uint) {
-        uint time = (i_creationTime + i_duration * 1 days - block.timestamp);
+        uint time = (i_creationTime +
+            (1 + i_duration) *
+            1 days -
+            block.timestamp);
         return time > 0 ? time / 86400 : 0;
     }
 
@@ -122,24 +126,15 @@ contract APIConsumer is
      */
 
     function requestWinner() public returns (bytes32 requestId) {
-        // if (timeLeft() != 0) revert YouHaveToWait(
-        //     timeLeft()
-        // );
-        // if (block.timestamp < i_creationTime + 200 days) { revert(); }
-        // require(block.timestamp >= i_creationTime + 200 days);
+        if (timeLeft() != 0) revert YouHaveToWait(timeLeft());
+        if (winner != 0) revert AlreadyHaveWinner();
         Chainlink.Request memory req = buildChainlinkRequest(
             i_jobId,
             address(this),
             this.fulfillOracleRequest.selector
         );
 
-        // req.add(
-        //     "get",
-        //     URL
-        // );
-
         req.add('league', league);
-
         // Sends the request
         return sendChainlinkRequest(req, i_fee);
     }
@@ -153,6 +148,8 @@ contract APIConsumer is
         uint[] memory _winner2,
         uint[] memory _winner3
     ) public virtual recordChainlinkFulfillment(_requestId) {
+        if (timeLeft() != 0) revert YouHaveToWait(timeLeft());
+        if (winner != 0) revert AlreadyHaveWinner();
         winner = _winner[0];
         winner2 = _winner2[0];
         winner3 = _winner3[0];
