@@ -94,13 +94,18 @@ contract APIConsumer is
 
     function checkUpkeep(
         bytes memory /*checkData*/
-    ) public view returns (bool upkeepNeeded, bytes memory /*performData */) {
+    )
+        public
+        view
+        override
+        returns (bool upkeepNeeded, bytes memory /*performData */)
+    {
         if (timeLeft() == 0 && !stopUpkeep) upkeepNeeded = true;
         else upkeepNeeded = false;
         return (upkeepNeeded, '');
     }
 
-    function performUpkeep(bytes calldata /*performData */) public {
+    function performUpkeep(bytes calldata /*performData */) public override {
         // if (timeLeft() != 0 || stopUpkeep) revert UpkeepNotNeeded();
         (bool upkeepNeeded, ) = checkUpkeep('');
         if (!upkeepNeeded) {

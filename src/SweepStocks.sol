@@ -13,6 +13,7 @@ error MintCap();
 error BuyCap();
 error NFTReachedCap();
 error CallFailed();
+error InvalidId(uint leagueSize);
 
 // error YouCanOnlyBuy();
 
@@ -54,7 +55,8 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     event WinnerPaid(address indexed owner, uint indexed amount);
 
     constructor(
-        string memory _league
+        string memory _league,
+        address _owner
     )
         payable
         APIConsumer(_league)
@@ -83,7 +85,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
             revert InvalidLeague();
         }
         // _owner = msg.sender;
-        transferOwnership(address(0xab9c475dE99c213DB8c9CAaE86478CCEA367f508));
+        transferOwnership(_owner);
     }
 
     function getCurrentBlockNumber() public view returns (uint) {
@@ -154,9 +156,9 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         return mintPriceList;
     }
 
-    function getSupply() public view returns (uint[20] memory) {
-        uint[20] memory getAllSupply;
+    function getSupply() public view returns (uint[] memory) {
         uint size = calculateLeagueSize();
+        uint[] memory getAllSupply = new uint[](size);
 
         for (uint i = 0; i < size; i++) {
             getAllSupply[i] = totalSupply(i + 1);
@@ -180,8 +182,10 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         if (amount > 1000) {
             revert MintCap();
         }
+        uint leagueSize = calculateLeagueSize();
+        if (id > leagueSize) revert InvalidId(leagueSize);
         // if (timeLeft() < 60 days) revert YouCanOnlyBuy();
-        if (totalSupply(id) == 0) mintPrice[id] = (1 ether / 100);
+        if (totalSupply(id) == 0) mintPrice[id] = (1 ether / 10);
         if (msg.value < mintPrice[id] * amount) {
             revert NotEnoughValue();
         }
@@ -208,6 +212,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         // require(winner == 0, "Not active");
         // if (timeLeft() < 60 days) revert YouCanOnlyBuy();
         uint msgValue = msg.value;
+        uint leagueSize = calculateLeagueSize();
         for (uint i = 0; i < ids.length; i++) {
             if (amounts[i] + totalSupply(ids[i]) > 1000000) {
                 revert NFTReachedCap();
@@ -221,6 +226,8 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
             if (msgValue < mintPrice[ids[i]] * amounts[i]) {
                 revert NotEnoughValue();
             }
+            if (ids[i] > leagueSize) revert InvalidId(leagueSize);
+
             //    require (msg.value >= mintPrice[ids[i]]*amounts[i], "Send more money");
             mintPrice[ids[i]] += amounts[i] * 0.00013 ether;
             // tokenOwners[ids[i]][to] += amounts[i];
@@ -237,7 +244,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         // require(block.timestamp >= i_creationTime + 350 days);
         address _owner = owner();
         payable(_owner).transfer(address(this).balance);
-        winner = 1000;
+        winner = 100;
     }
 
     // Updates the list of all the owners of a NFT
@@ -292,7 +299,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         payable(nftOwner).transfer(earnings);
         address _owner = owner();
         payable(_owner).transfer(
-            (((transferPrice[id][nftOwner] * 1) * amount) / 1000)
+            ((transferPrice[id][nftOwner] * amount) / 1000)
         );
         (bool success, ) = address(this).call(
             abi.encodeWithSignature(
@@ -382,7 +389,6 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         bytes memory data
     ) internal override {
         super._safeTransferFrom(from, to, id, amount, data);
-
         updateOwnersList(id, to);
     }
 
