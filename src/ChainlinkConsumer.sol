@@ -7,7 +7,7 @@ import {AutomationCompatibleInterface} from '@chainlink/contracts/src/v0.8/Autom
 import {LinkTokenInterface} from '@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol';
 
 error UpkeepNotNeeded();
-error YouHaveToWait(uint time);
+error YouHaveToWait();
 error AlreadyHaveWinner();
 
 struct RegistrationParams {
@@ -56,6 +56,11 @@ contract APIConsumer is
         uint256 winner3
     );
 
+    /**
+     * @dev Constructor function to initialize the APIConsumer contract.
+     * @param _league The name of the football league associated with this contract.
+     * @param _duration The duration of the API data validity.
+     */
     constructor(
         string memory _league,
         uint _duration
@@ -76,6 +81,10 @@ contract APIConsumer is
         i_fee = (1 * LINK_DIVISIBILITY) / 10; // 0,1 * 10**18
     }
 
+    /**
+     * @dev Register and predict the ID for chainlink upkeep (automation).
+     * This function approves the LINK token transfer and registers the upkeep with Keeper.
+     */
     function registerAndPredictID() public {
         // LINK must be approved for transfer - this can be done every time or once
         // with an infinite approval
@@ -93,14 +102,23 @@ contract APIConsumer is
         i_registrar.registerUpkeep(params);
     }
 
+    /**
+     * @dev Get the time left to check upkeep, call the oracle for the winners and close the NFT market.
+     * @return The time left in days.
+     */
     function timeLeft() public view returns (uint) {
-        uint time = (i_creationTime +
-            (1 + i_duration) *
+        int time = (int(i_creationTime) +
+            (1 + int(i_duration)) *
             1 days -
-            block.timestamp);
-        return time > 0 ? time / 86400 : 0;
+            int(block.timestamp));
+        return time > 0 ? uint(time) / 86400 : 0;
     }
 
+    /**
+     * @dev Check if upkeep is needed based on the remaining time and the stopUpkeep flag.
+     * @return upkeepNeeded Whether upkeep is needed.
+     * @return performData Additional data for performing upkeep (not used in this implementation).
+     */
     function checkUpkeep(
         bytes memory /*checkData*/
     ) public view returns (bool upkeepNeeded, bytes memory /*performData */) {
@@ -109,8 +127,13 @@ contract APIConsumer is
         return (upkeepNeeded, '');
     }
 
+    /**
+     * @dev Perform upkeep by requesting the winner when necessary.
+     * If upkeep is not needed, it reverts with an error.
+     * If it is, thas stopUpkeep flag becomes true to prevent more calls.
+     */
     function performUpkeep(bytes calldata /*performData */) public {
-        // if (timeLeft() != 0 || stopUpkeep) revert UpkeepNotNeeded();
+        if (timeLeft() != 0 || stopUpkeep) revert UpkeepNotNeeded();
         (bool upkeepNeeded, ) = checkUpkeep('');
         if (!upkeepNeeded) {
             revert UpkeepNotNeeded();
@@ -121,12 +144,12 @@ contract APIConsumer is
     }
 
     /**
-     * Create a Chainlink request to retrieve API response, then find the target
-     * data.
+     * @dev Request the winner from the Chainlink Oracle.
+     * It sends a Chainlink request with the league parameter to the Oracle.
+     * @return requestId The ID of the Chainlink request.
      */
-
     function requestWinner() public returns (bytes32 requestId) {
-        if (timeLeft() != 0) revert YouHaveToWait(timeLeft());
+        if (timeLeft() != 0) revert YouHaveToWait();
         if (winner != 0) revert AlreadyHaveWinner();
         Chainlink.Request memory req = buildChainlinkRequest(
             i_jobId,
@@ -140,7 +163,11 @@ contract APIConsumer is
     }
 
     /**
-     * Receive the response in the form of uint256
+     * @dev Receive and process the response from the Chainlink Oracle.
+     * @param _requestId The ID of the Chainlink request.
+     * @param _winner An array containing the 1st place's data.
+     * @param _winner2 An array containing the 10th place's data.
+     * @param _winner3 An array containing the 17th place's data.
      */
     function fulfillOracleRequest(
         bytes32 _requestId,
@@ -148,7 +175,7 @@ contract APIConsumer is
         uint[] memory _winner2,
         uint[] memory _winner3
     ) public virtual recordChainlinkFulfillment(_requestId) {
-        if (timeLeft() != 0) revert YouHaveToWait(timeLeft());
+        if (timeLeft() != 0) revert YouHaveToWait();
         if (winner != 0) revert AlreadyHaveWinner();
         winner = _winner[0];
         winner2 = _winner2[0];
@@ -159,11 +186,11 @@ contract APIConsumer is
     /**
      * Allow withdraw of Link tokens from the contract
      */
-    function withdrawLink() public onlyOwner {
-        LinkTokenInterface link = LinkTokenInterface(chainlinkTokenAddress());
-        require(
-            link.transfer(msg.sender, link.balanceOf(address(this))),
-            'Unable to transfer'
-        );
-    }
+    // function withdrawLink() public onlyOwner {
+    //     LinkTokenInterface link = LinkTokenInterface(chainlinkTokenAddress());
+    //     require(
+    //         link.transfer(msg.sender, link.balanceOf(address(this))),
+    //         'Unable to transfer'
+    //     );
+    // }
 }

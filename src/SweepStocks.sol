@@ -16,6 +16,7 @@ error CallFailed();
 error InvalidId();
 
 /// @custom:security-contact marcelofrayha@gmail.com
+
 contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     uint[3] public payout;
     uint[3] public supply;
@@ -33,24 +34,23 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
 
     PriceDetails[] private priceDetails;
 
-    event TokenPriceSet(uint indexed id, address indexed by, uint amount);
-    event TokenBought(
-        uint indexed id,
-        address from,
-        address by,
-        uint amount,
-        uint indexed value,
-        uint indexed time
-    );
+    // event TokenPriceSet(uint indexed id, address indexed by, uint amount);
+    // event TokenBought(
+    //     uint indexed id,
+    //     address from,
+    //     address by,
+    //     uint amount,
+    //     uint indexed value,
+    //     uint indexed time
+    // );
 
-    event TransferValue(
-        address indexed from,
-        address indexed by,
-        uint indexed value
-    );
-
-    event WinnerPaid(address indexed owner, uint indexed amount);
-
+    // event WinnerPaid(address indexed owner, uint indexed amount);
+    /**
+     * @dev Constructor function to initialize the SweepStocks contract.
+     * @param _league The name of the football league associated with this contract.
+     * @param _owner The initial owner of the contract.
+     * @param _duration The duration of the API data validity.
+     */
     constructor(
         string memory _league,
         address _owner,
@@ -86,14 +86,26 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         initialMintValue();
     }
 
+    /**
+     * @dev Get the current block number.
+     * @return The current Ethereum block number.
+     */
     function getCurrentBlockNumber() external view returns (uint) {
         return block.number;
     }
 
+    /**
+     * @dev Get the block number at which the contract was created.
+     * @return The block number at contract creation.
+     */
     function getCreationBlockNumber() external view returns (uint) {
         return i_creationBlock;
     }
 
+    /**
+     * @dev Calculate the size of the football league associated with this contract.
+     * @return leagueSize The number of teams in the league.
+     */
     function calculateLeagueSize() private view returns (uint leagueSize) {
         if (
             keccak256(abi.encodePacked(league)) ==
@@ -115,6 +127,9 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         }
     }
 
+    /**
+     * @dev Calculate and store the prices of all NFTs in the league.
+     */
     function calculateAllPrices() private {
         delete priceDetails;
         uint size = calculateLeagueSize();
@@ -131,10 +146,18 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         }
     }
 
+    /**
+     * @dev Get the price of every owner for all NFTs in the league.
+     * @return An array of structs containing price details for each NFT.
+     */
     function getAllPrices() external view returns (PriceDetails[] memory) {
         return priceDetails;
     }
 
+    /**
+     * @dev Get the balance of Ether in the contract's address.
+     * @return The current Ether balance of the contract.
+     */
     function getPoolPrize() external view returns (uint) {
         return address(this).balance;
     }
@@ -143,10 +166,19 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     //     _setURI(newuri);
     // }
 
+    /**
+     * @dev Get the list of token owners for a specific NFT ID.
+     * @param id The ID of the NFT to query.
+     * @return An array of addresses representing the token owners.
+     */
     function tokenOwnersList(uint id) public view returns (address[] memory) {
         return tokenOwners[id];
     }
 
+    /**
+     * @dev Create a list of mint prices for all NFTs in the league.
+     * @return _mintPriceList An array of mint prices for all NFTs.
+     */
     function createMintPriceList()
         public
         view
@@ -161,6 +193,10 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         return mintPriceList;
     }
 
+    /**
+     * @dev Get the total supply of NFTs for all teams in the league.
+     * @return An array of total supply of each NFT.
+     */
     function getSupply() external view returns (uint[] memory) {
         uint size = calculateLeagueSize();
         uint[] memory getAllSupply = new uint[](size);
@@ -171,7 +207,13 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         return getAllSupply;
     }
 
-    //Creates an NFT representing a football team
+    /**
+     * @dev Mint a specified amount of NFTs representing football teams.
+     * @param account The address to receive the minted NFTs.
+     * @param id The ID of the football team NFT to mint.
+     * @param amount The number of NFTs to mint.
+     * @param data Additional data to include with the minted NFTs.
+     */
     function mint(
         address account,
         uint256 id,
@@ -206,7 +248,13 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         // tokenOwners[id][account] += amount;
     }
 
-    //Creates a batch of NFTs
+    /**
+     * @dev Mint a batch of NFTs representing football teams.
+     * @param to The address to receive the minted NFTs.
+     * @param ids An array of NFT IDs to mint.
+     * @param amounts An array specifying the quantity of each NFT to mint.
+     * @param data Additional data to include with the minted NFTs.
+     */
     function mintBatch(
         address to,
         uint256[] memory ids,
@@ -246,7 +294,11 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
             setApprovalForAll(address(this), true);
     }
 
-    //Allow destroying the contract after 350 days of its creation
+    /**
+     * @dev Destroy the contract and transfer its balance to the contract owner.
+     * Can only be called after a specific period of time has elapsed.
+     * This is to ensure no funds get stuck in the contract.
+     */
     function destroy() public {
         // require(block.timestamp >= i_creationTime + 350 days);
         address _owner = owner();
@@ -254,7 +306,11 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         winner = 100;
     }
 
-    // Updates the list of all the owners of a NFT
+    /**
+     * @dev Updates the list of all the owners of an NFT.
+     * @param id The ID of the NFT for which the owners list is updated.
+     * @param account The address of the account to add to or remove from the owners list.
+     */
     function updateOwnersList(uint id, address account) private {
         bool inTheList = false;
         for (uint i = 0; i < tokenOwners[id].length; i++) {
@@ -269,7 +325,11 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         if (!inTheList) tokenOwners[id].push(account);
     }
 
-    //Allow users to set a price for its NFT
+    /**
+     * @dev Allow users to set a price for their NFT.
+     * @param id The ID of the NFT for which the price is set.
+     * @param price The price in Ether to set for the NFT.
+     */
     function setTokenPrice(uint id, uint price) public {
         if (balanceOf(msg.sender, id) == 0) {
             revert NotOwner();
@@ -281,10 +341,15 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         // require (price > 0, "You need to set a positive price");
         transferPrice[id][msg.sender] = price;
         calculateAllPrices();
-        emit TokenPriceSet(id, msg.sender, price);
+        // emit TokenPriceSet(id, msg.sender, price);
     }
 
-    //Allow user to buy someone else's NFT
+    /**
+     * @dev Allow a user to buy someone else's NFT. The value sent must match the transfer price.
+     * @param id The ID of the NFT to buy.
+     * @param amount The quantity of NFTs to buy.
+     * @param nftOwner The address of the current owner of the NFT.
+     */
     function buyToken(uint id, uint amount, address nftOwner) public payable {
         if (winner != 0) {
             revert NotActive();
@@ -301,7 +366,6 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         }
         if (!isApprovedForAll(msg.sender, address(this)))
             setApprovalForAll(address(this), true);
-        if (balanceOf(nftOwner, id) == 0) calculateAllPrices();
         uint earnings = ((amount * transferPrice[id][nftOwner] * 999) / 1000);
         payable(nftOwner).transfer(earnings);
         address _owner = owner();
@@ -321,19 +385,21 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         if (!success) {
             revert CallFailed();
         }
-        emit TokenBought(
-            id,
-            nftOwner,
-            msg.sender,
-            amount,
-            (earnings / amount),
-            block.timestamp
-        );
-        emit TransferValue(nftOwner, msg.sender, amount * earnings);
+        if (balanceOf(nftOwner, id) == 0) calculateAllPrices();
+        // emit TokenBought(
+        //     id,
+        //     nftOwner,
+        //     msg.sender,
+        //     amount,
+        //     (earnings / amount),
+        //     block.timestamp
+        // );
     }
 
-    /*Calculate how much each NFT was awarded by the end of the season 
-    It is called when the first user calls a payWinner function*/
+    /**
+     * @dev Calculate how much each NFT was awarded by the end of the season.
+     * It is called when the first user calls a payWinner function.
+     */
     function calculatePayout() private {
         uint balance = address(this).balance;
         payout[0] = balance / 4; //payout for the 1st place
@@ -346,13 +412,14 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         ];
     }
 
-    //Pays the holder of a NFT representing the champion,
-    // the 10th place and the 17th place
+    /**
+     * @dev Pay the holder of NFTs representing the champion, the 10th place, and the 17th place.
+     * Can only be called after winners are defined.
+     */
     function payWinner() public payable {
         if (winner == 0) {
             revert NotActive();
         }
-        // require (winner != 0, "There is no winner");
         if (
             balanceOf(msg.sender, winner) == 0 ||
             balanceOf(msg.sender, winner2) == 0 ||
@@ -360,8 +427,6 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         ) {
             revert NotOwner();
         }
-        // require (balanceOf(msg.sender, winner) != 0 || balanceOf(msg.sender, winner2) != 0
-        // || balanceOf(msg.sender, winner3) != 0, "You don't have this NFT");
         if (payoutDefined == false) calculatePayout();
         uint balance;
         uint amount;
@@ -384,10 +449,17 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         }
         payoutDefined = true;
         payable(msg.sender).transfer(amount);
-        emit WinnerPaid(msg.sender, amount);
+        // emit WinnerPaid(msg.sender, amount);
     }
 
-    //This is an override function to update our owners' list
+    /**
+     * @dev Override function to update the owners' list when transferring NFTs.
+     * @param from The address transferring the NFT.
+     * @param to The address receiving the NFT.
+     * @param id The ID of the NFT being transferred.
+     * @param amount The quantity of NFTs being transferred.
+     * @param data Additional data for the transfer.
+     */
     function _safeTransferFrom(
         address from,
         address to,
@@ -399,7 +471,15 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         updateOwnersList(id, to);
     }
 
-    // The following function is override required by Solidity.
+    /**
+     * @dev Override function required by Solidity.
+     * @param operator The address that initiates the transfer.
+     * @param from The address from which tokens are transferred.
+     * @param to The address to which tokens are transferred.
+     * @param ids An array of NFT IDs being transferred.
+     * @param amounts An array specifying the quantity of each NFT being transferred.
+     * @param data Additional data for the transfer.
+     */
     function _beforeTokenTransfer(
         address operator,
         address from,
