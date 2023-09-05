@@ -15,8 +15,12 @@ error NFTReachedCap();
 error CallFailed();
 error InvalidId();
 
+/// @title SweepStocks - A sweepstake game
+/// @author Marcelo Frayha
+/// @notice This contracts allows you to bet on a team from a football league and also negotiate your bets.
+/// @dev This contract only works with oracles specified in ChainlinkConsumer.sol
+/// @custom:experimental This is an experimental contract.
 /// @custom:security-contact marcelofrayha@gmail.com
-
 contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     uint[3] public payout;
     uint[3] public supply;
@@ -47,9 +51,9 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     // event WinnerPaid(address indexed owner, uint indexed amount);
     /**
      * @dev Constructor function to initialize the SweepStocks contract.
-     * @param _league The name of the football league associated with this contract.
+     * @param _league The name of the football league country associated with this contract.
      * @param _owner The initial owner of the contract.
-     * @param _duration The duration of the API data validity.
+     * @param _duration The duration of the contract before it asks for the winners.
      */
     constructor(
         string memory _league,
@@ -414,7 +418,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
 
     /**
      * @dev Pay the holder of NFTs representing the champion, the 10th place, and the 17th place.
-     * Can only be called after winners are defined.
+     * Can only be called after winners are defined, that is to say, when timeLeft() returns 0.
      */
     function payWinner() public payable {
         if (winner == 0) {
