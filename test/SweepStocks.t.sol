@@ -21,7 +21,7 @@ contract SweepStocksTest is StdInvariant, Test {
 
     // Statefull fuzz testing
     function invariant_testWinnerIsZero() public view {
-        assert(sweepStocks.winner() == 0);
+        assert(sweepStocks.winner(0) == 0);
     }
 
     // function testOwner() public {
@@ -36,7 +36,7 @@ contract SweepStocksTest is StdInvariant, Test {
         // Assert that the token was minted and exists
         // assertTrue(true, "Token does not exist");
         // Assert that the token owner is the caller of the mint function
-        assertEq(sweepStocks.winner(), 0, 'Incorrect value');
+        assertEq(sweepStocks.winner(0), 0, 'Incorrect value');
     }
 
     function testMintFailWithoutEth() public {

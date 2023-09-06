@@ -5,6 +5,8 @@ import {Chainlink, ChainlinkClient} from '@chainlink/contracts/src/v0.8/Chainlin
 import {ConfirmedOwner} from '@chainlink/contracts/src/v0.8/ConfirmedOwner.sol';
 import {AutomationCompatibleInterface} from '@chainlink/contracts/src/v0.8/AutomationCompatible.sol';
 import {LinkTokenInterface} from '@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol';
+import {OraclesMode} from './lib/OraclesMode.sol';
+import {VerifyLeague} from './lib/VerifyLeague.sol';
 
 error UpkeepNotNeeded();
 error YouHaveToWait();
@@ -32,29 +34,45 @@ contract APIConsumer is
     ConfirmedOwner,
     AutomationCompatibleInterface
 {
-    // using StringUtils for string;
-    LinkTokenInterface public constant i_link =
+    LinkTokenInterface private constant i_link =
         LinkTokenInterface(0x326C977E6efc84E512bB9C30f76E30c160eD06FB);
-    KeeperRegistrarInterface public constant i_registrar =
+    KeeperRegistrarInterface private constant i_registrar =
         KeeperRegistrarInterface(0x57A4a13b35d25EE78e084168aBaC5ad360252467);
     using Chainlink for Chainlink.Request;
-    bool public stopUpkeep = false;
-    uint256 public winner;
-    uint256 public winner2;
-    uint256 public winner3;
-    uint public immutable i_duration;
-    uint public immutable i_creationTime;
-    uint public immutable i_creationBlock;
-    bytes32 private immutable i_jobId;
+    using OraclesMode for uint[];
+
+    bool private stopUpkeep = false;
+    uint8 public winnerResponsesReceived;
+    uint8[][3] public winnerResponses;
+    // uint8[] public winner2Responses;
+    // uint8[] public winner3Responses;
+    uint8[3] public winner;
+    bytes32[2] requestIds;
+    uint internal immutable i_duration;
+    uint internal immutable i_creationTime;
+    uint internal immutable i_creationBlock;
     uint256 private immutable i_fee;
+    bytes32[2] private i_jobId = [
+        bytes32('cd3a5f8dcac245e9a3ff58d59b445595'),
+        bytes32('0bf991b9f60b4f72964c1e6afc34f099')
+    ];
+    address[2] private c_oracles = [
+        address(0xc7086899d02Cdd5C1B0cDa32CB50aaB9a2edC416),
+        address(0x7ca7215c6B8013f249A195cc107F97c4e623e5F5)
+    ];
     // string private URL;
-    string public league;
-    event RequestWinner(
-        bytes32 indexed requestId,
-        uint256 winner,
-        uint256 winner2,
-        uint256 winner3
-    );
+    string internal league;
+
+    mapping(uint => uint) valueCounts;
+    mapping(uint => uint) valueCountsWinner2;
+    mapping(uint => uint) valueCountsWinner3;
+
+    // event RequestWinner(
+    //     bytes32 indexed requestId,
+    //     uint256 winner,
+    //     uint256 winner2,
+    //     uint256 winner3
+    // );
 
     /**
      * @dev Constructor function to initialize the APIConsumer contract.
@@ -73,11 +91,11 @@ contract APIConsumer is
         // string memory endpoint = "/standings";
         // URL = baseURL.concat(league).concat(endpoint);
         setChainlinkToken(0x326C977E6efc84E512bB9C30f76E30c160eD06FB); //Polygon LINK Token
-        setChainlinkOracle(0x7ca7215c6B8013f249A195cc107F97c4e623e5F5); //Polygon Oracle run by OracleSpace Labs
+        // setChainlinkOracle(0x7ca7215c6B8013f249A195cc107F97c4e623e5F5); //Polygon Oracle run by OracleSpace Labs
         // setChainlinkOracle(0xc7086899d02Cdd5C1B0cDa32CB50aaB9a2edC416); //Polygon Oracle run by me
         //i_jobId = "3d2529ce26a74c9d9e593750d94950c9"; //single response job
         // i_jobId = "cd3a5f8dcac245e9a3ff58d59b445595"; //multi response job
-        i_jobId = '0bf991b9f60b4f72964c1e6afc34f099'; //multi response job from Labs
+        // i_jobId = '0bf991b9f60b4f72964c1e6afc34f099'; //multi response job from Labs
         i_fee = (1 * LINK_DIVISIBILITY) / 10; // 0,1 * 10**18
     }
 
@@ -85,7 +103,7 @@ contract APIConsumer is
      * @dev Register and predict the ID for chainlink upkeep (automation).
      * This function approves the LINK token transfer and registers the upkeep with Keeper.
      */
-    function registerAndPredictID() public {
+    function registerAndPredictID() external {
         // LINK must be approved for transfer - this can be done every time or once
         // with an infinite approval
         RegistrationParams memory params = RegistrationParams(
@@ -107,11 +125,7 @@ contract APIConsumer is
      * @return The time left in days.
      */
     function timeLeft() public view returns (uint) {
-        int time = (int(i_creationTime) +
-            (1 + int(i_duration)) *
-            1 days -
-            int(block.timestamp));
-        return time > 0 ? uint(time) / 86400 : 0;
+        return VerifyLeague.timeLeft(i_creationTime, i_duration);
     }
 
     /**
@@ -132,7 +146,7 @@ contract APIConsumer is
      * If upkeep is not needed, it reverts with an error.
      * If it is, thas stopUpkeep flag becomes true to prevent more calls.
      */
-    function performUpkeep(bytes calldata /*performData */) public {
+    function performUpkeep(bytes calldata /*performData */) external {
         if (timeLeft() != 0 || stopUpkeep) revert UpkeepNotNeeded();
         (bool upkeepNeeded, ) = checkUpkeep('');
         if (!upkeepNeeded) {
@@ -148,18 +162,26 @@ contract APIConsumer is
      * It sends a Chainlink request with the league parameter to the Oracle.
      * @return requestId The ID of the Chainlink request.
      */
-    function requestWinner() public returns (bytes32 requestId) {
+    function requestWinner() private returns (bytes32[2] memory requestId) {
         if (timeLeft() != 0) revert YouHaveToWait();
-        if (winner != 0) revert AlreadyHaveWinner();
-        Chainlink.Request memory req = buildChainlinkRequest(
-            i_jobId,
-            address(this),
-            this.fulfillOracleRequest.selector
-        );
+        if (winner[0] != 0) revert AlreadyHaveWinner();
+        for (uint i = 0; i < c_oracles.length; ) {
+            Chainlink.Request memory req = buildChainlinkRequest(
+                i_jobId[i],
+                address(this),
+                this.fulfillOracleRequest.selector
+            );
 
-        req.add('league', league);
-        // Sends the request
-        return sendChainlinkRequest(req, i_fee);
+            req.add('league', league);
+            // Sends the request
+            bytes32 request = sendChainlinkRequestTo(c_oracles[i], req, i_fee);
+            requestIds[i] = request;
+            unchecked {
+                i++;
+            }
+        }
+
+        return requestIds;
     }
 
     /**
@@ -171,16 +193,53 @@ contract APIConsumer is
      */
     function fulfillOracleRequest(
         bytes32 _requestId,
-        uint[] memory _winner,
-        uint[] memory _winner2,
-        uint[] memory _winner3
-    ) public virtual recordChainlinkFulfillment(_requestId) {
+        uint[] calldata _winner,
+        uint[] calldata _winner2,
+        uint[] calldata _winner3
+    ) external virtual recordChainlinkFulfillment(_requestId) {
         if (timeLeft() != 0) revert YouHaveToWait();
-        if (winner != 0) revert AlreadyHaveWinner();
-        winner = _winner[0];
-        winner2 = _winner2[0];
-        winner3 = _winner3[0];
-        emit RequestWinner(_requestId, winner, winner2, winner3);
+        if (winner[0] != 0) revert AlreadyHaveWinner();
+
+        recordWinnerResponse(_winner[0]);
+        recordWinner2Response(_winner2[0]);
+        recordWinner3Response(_winner3[0]);
+        winnerResponsesReceived++;
+        if (winnerResponsesReceived == i_jobId.length) {
+            // If any of the winners are not calculated, wait for more responses.
+            calculateModes();
+        }
+        // emit RequestWinner(_requestId, winner[0], winner[1], winner[2]);
+    }
+
+    /**
+     * Functions to calculate the mode of Oracles answers
+     */
+    // Function to record oracle responses for winner
+    function recordWinnerResponse(uint response) private {
+        winnerResponses[0].push(uint8(response));
+    }
+
+    // Function to record oracle responses for winner2
+    function recordWinner2Response(uint response) private {
+        winnerResponses[1].push(uint8(response));
+    }
+
+    // Function to record oracle responses for winner3
+    function recordWinner3Response(uint response) private {
+        winnerResponses[2].push(uint8(response));
+    }
+
+    // Function to calculate the modes for all three variables
+    function calculateModes() private {
+        winner[0] = OraclesMode.calculateMode(winnerResponses[0], valueCounts);
+        winner[1] = OraclesMode.calculateMode(
+            winnerResponses[1],
+            valueCountsWinner2
+        );
+        winner[2] = OraclesMode.calculateMode(
+            winnerResponses[2],
+            valueCountsWinner3
+        );
     }
 
     /**

@@ -9,8 +9,8 @@ error notOwner();
 error emptyList();
 
 contract Factory is ConfirmedOwner {
-    address[] public contractList;
-    string public league;
+    address[] private contractList;
+    string private league;
 
     /**
      * @dev Constructor function to initialize the APIConsumer contract with a league name.
@@ -28,7 +28,7 @@ contract Factory is ConfirmedOwner {
      */
     function createContract(
         uint duration
-    ) public onlyOwner returns (SweepStocks) {
+    ) external onlyOwner returns (SweepStocks) {
         SweepStocks newInstance = new SweepStocks(league, msg.sender, duration);
         contractList.push(address(newInstance));
         return newInstance;
@@ -38,7 +38,7 @@ contract Factory is ConfirmedOwner {
      * @dev Get the address of the last created SweepStocks contract.
      * @return The address of the last created SweepStocks contract.
      */
-    function getLastContract() public view returns (address) {
+    function getLastContract() external view returns (address) {
         if (contractList.length == 0) revert emptyList();
         return contractList[contractList.length - 1];
     }

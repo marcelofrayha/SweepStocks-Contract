@@ -23,6 +23,6 @@ contract InvariantsTest is StdInvariant, Test {
     }
 
     function invariant_contractBalanceShouldMatchMintValue() public view {
-        assert(sweepStocks.winner() == 0);
+        assert(sweepStocks.winner(0) == 0);
     }
 }
