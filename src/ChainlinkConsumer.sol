@@ -48,17 +48,17 @@ contract APIConsumer is
     // uint8[] public winner3Responses;
     uint8[3] public winner;
     bytes32[2] requestIds;
-    uint internal immutable i_duration;
+    uint public immutable i_duration;
     uint internal immutable i_creationTime;
     uint internal immutable i_creationBlock;
     uint256 private immutable i_fee;
     bytes32[2] private i_jobId = [
-        bytes32('cd3a5f8dcac245e9a3ff58d59b445595'),
-        bytes32('0bf991b9f60b4f72964c1e6afc34f099')
+        bytes32('0bf991b9f60b4f72964c1e6afc34f099'),
+        bytes32('cd3a5f8dcac245e9a3ff58d59b445595')
     ];
     address[2] private c_oracles = [
-        address(0xc7086899d02Cdd5C1B0cDa32CB50aaB9a2edC416),
-        address(0x7ca7215c6B8013f249A195cc107F97c4e623e5F5)
+        address(0x7ca7215c6B8013f249A195cc107F97c4e623e5F5),
+        address(0xc7086899d02Cdd5C1B0cDa32CB50aaB9a2edC416)
     ];
     // string private URL;
     string internal league;

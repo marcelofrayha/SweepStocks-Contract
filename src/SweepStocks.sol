@@ -294,7 +294,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
      * This is to ensure no funds get stuck in the contract.
      */
     function destroy() public {
-        // require(block.timestamp >= i_creationTime + 350 days);
+        if (block.timestamp < i_creationTime + 300 days) revert();
         address _owner = owner();
         payable(_owner).transfer(address(this).balance);
         winner[0] = 100;
@@ -331,7 +331,6 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         if (balanceOf(msg.sender, id) == 0) {
             revert NotOwner();
         }
-        // require (balanceOf(msg.sender, id) > 0, "You don't have this NFT");
         // if (price == 0) {
         //     revert NotEnoughValue();
         // }

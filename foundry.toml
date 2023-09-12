@@ -7,7 +7,7 @@ test = "test"
 script = "script"
 broadcast = "broadcast"
 optimizer = true
-optimizer_runs = 10
+optimizer_runs = 90
 ffi = true
 
 [rpc_endpoints]
