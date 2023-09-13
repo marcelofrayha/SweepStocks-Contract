@@ -12,6 +12,8 @@ contract Factory is ConfirmedOwner {
     address[] private contractList;
     string private league;
 
+    event ContractAddress(address);
+
     /**
      * @dev Constructor function to initialize the APIConsumer contract with a league name.
      * @param _league The name of the football league associated with this contract.
@@ -31,6 +33,7 @@ contract Factory is ConfirmedOwner {
     ) external onlyOwner returns (SweepStocks) {
         SweepStocks newInstance = new SweepStocks(league, msg.sender, duration);
         contractList.push(address(newInstance));
+        emit ContractAddress(address(newInstance));
         return newInstance;
     }
 
