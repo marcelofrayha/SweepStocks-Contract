@@ -7,6 +7,7 @@ import {APIConsumer, ConfirmedOwner} from './ChainlinkConsumer.sol';
 import {PriceCalculation} from './lib/PriceCalculation.sol';
 import {PriceDetails} from './lib/PriceDetails.sol';
 import {VerifyLeague} from './lib/VerifyLeague.sol';
+import {BuyTokenChecks} from './lib/BuyTokenChecks.sol';
 
 error NotEnoughValue();
 error NotActive();
@@ -27,6 +28,8 @@ error InvalidId();
 contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     using PriceCalculation for *;
     using VerifyLeague for *;
+    using BuyTokenChecks for *;
+
     uint private immutable i_leagueSize;
     uint private constant c_initialValue = 1 ether / 10;
     uint[3] public payout;
@@ -347,27 +350,36 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
      * @param nftOwner The address of the current owner of the NFT.
      */
     function buyToken(uint id, uint amount, address nftOwner) public payable {
-        if (winner[0] != 0) {
-            revert NotActive();
-        }
-        if (
-            msg.value != transferPrice[id][nftOwner] * amount &&
-            msg.value != (transferPrice[id][nftOwner] * amount) + 1 &&
-            msg.value != (transferPrice[id][nftOwner] * amount) - 1
-        ) {
-            revert NotEnoughValue();
-        }
+        // if (winner[0] != 0) {
+        //     revert NotActive();
+        // }
+        address _owner = owner();
+
+        BuyTokenChecks.buyToken(
+            id,
+            amount,
+            nftOwner,
+            winner,
+            _owner,
+            transferPrice
+        );
+        // if (
+        //     msg.value != transferPrice[id][nftOwner] * amount &&
+        //     msg.value != (transferPrice[id][nftOwner] * amount) + 1 &&
+        //     msg.value != (transferPrice[id][nftOwner] * amount) - 1
+        // ) {
+        //     revert NotEnoughValue();
+        // }
         if (amount > balanceOf(nftOwner, id)) {
             revert BuyCap();
         }
         if (!isApprovedForAll(msg.sender, address(this)))
             setApprovalForAll(address(this), true);
-        uint earnings = ((amount * transferPrice[id][nftOwner] * 999) / 1000);
-        payable(nftOwner).transfer(earnings);
-        address _owner = owner();
-        payable(_owner).transfer(
-            ((transferPrice[id][nftOwner] * amount) / 1000)
-        );
+        // uint earnings = ((amount * transferPrice[id][nftOwner] * 999) / 1000);
+        // payable(nftOwner).transfer(earnings);
+        // payable(_owner).transfer(
+        //     ((transferPrice[id][nftOwner] * amount) / 1000)
+        // );
         (bool success, ) = address(this).call(
             abi.encodeWithSignature(
                 'safeTransferFrom(address,address,uint256,uint256,bytes)',
