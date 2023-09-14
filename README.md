@@ -4,13 +4,13 @@
    
 This software only works in Mumbai Network for now. 
 
-We are currently building the front end so it can be easily used. Until there, you can deploy ``SweepStocks.sol`` passing to the constructor: 
+We are currently building the front end so it can be easily used. You can check it on [https://www.sweepstocksbeta.vercel.app](https://sweepstocksbeta.vercel.app/)
 ##### a string "country name" (look available leagues below), 
 ##### an address "owner", 
 ##### a uint "duration of the contract in days".
 ##### After deploying the contract, send it at least 0.5 Link to register an Upkeep and pay the oracle by the end of the contract. The code for this is in ``ChainlinkConsumer.sol``
 
-You can mint a NFT by choosing a valid id. For a league with 20 teams, the ids will be between 1 and 20. 
+##### You can mint a NFT by choosing a valid id. For a league with 20 teams, the ids will be between 1 and 20. 
 ##### The price of the first NFT minted is 0.1 Ether (Matic), then each next one will be 0.00013 ethers more expensive.
 ##### If you mint more than one NFT and up to 1000 they will all cost the lowest value.
 ##### 100% of the value sent is added to the contract.
