@@ -42,22 +42,21 @@ contract APIConsumer is
     using OraclesMode for uint[];
 
     bool private stopUpkeep = false;
-    uint8 public winnerResponsesReceived;
     uint8[][3] public winnerResponses;
-    // uint8[] public winner2Responses;
-    // uint8[] public winner3Responses;
     uint8[3] public winner;
-    bytes32[2] requestIds;
+    // bytes32[3] private requestIds;
     uint public immutable i_duration;
     uint internal immutable i_creationTime;
     uint internal immutable i_creationBlock;
     uint256 private immutable i_fee;
-    bytes32[2] private i_jobId = [
+    bytes32[3] private i_jobId = [
+        bytes32('0bf991b9f60b4f72964c1e6afc34f099'),
         bytes32('0bf991b9f60b4f72964c1e6afc34f099'),
         bytes32('cd3a5f8dcac245e9a3ff58d59b445595')
     ];
-    address[2] private c_oracles = [
+    address[3] private c_oracles = [
         address(0x7ca7215c6B8013f249A195cc107F97c4e623e5F5),
+        address(0x12A3d7759F745f4cb8EE8a647038c040cB8862A5),
         address(0xc7086899d02Cdd5C1B0cDa32CB50aaB9a2edC416)
     ];
     // string private URL;
@@ -114,7 +113,7 @@ contract APIConsumer is
             msg.sender,
             '',
             '',
-            uint96(i_fee * 5)
+            uint96(i_fee * 3)
         );
         i_link.approve(address(i_registrar), params.amount);
         i_registrar.registerUpkeep(params);
@@ -144,7 +143,7 @@ contract APIConsumer is
     /**
      * @dev Perform upkeep by requesting the winner when necessary.
      * If upkeep is not needed, it reverts with an error.
-     * If it is, thas stopUpkeep flag becomes true to prevent more calls.
+     * If it is, than stopUpkeep flag becomes true to prevent more calls.
      */
     function performUpkeep(bytes calldata /*performData */) external {
         if (timeLeft() != 0 || stopUpkeep) revert UpkeepNotNeeded();
@@ -158,11 +157,10 @@ contract APIConsumer is
     }
 
     /**
-     * @dev Request the winner from the Chainlink Oracle.
-     * It sends a Chainlink request with the league parameter to the Oracle.
-     * @return requestId The ID of the Chainlink request.
+     * @dev Request the winner from the Chainlink Oracles.
+     * It sends a Chainlink request with the league parameter to the Oracles.
      */
-    function requestWinner() private returns (bytes32[2] memory requestId) {
+    function requestWinner() private {
         if (timeLeft() != 0) revert YouHaveToWait();
         if (winner[0] != 0) revert AlreadyHaveWinner();
         for (uint i = 0; i < c_oracles.length; ) {
@@ -174,14 +172,13 @@ contract APIConsumer is
 
             req.add('league', league);
             // Sends the request
-            bytes32 request = sendChainlinkRequestTo(c_oracles[i], req, i_fee);
-            requestIds[i] = request;
+            sendChainlinkRequestTo(c_oracles[i], req, i_fee);
+            // requestIds[i] = request;
             unchecked {
                 i++;
             }
         }
-
-        return requestIds;
+        // return requestIds;
     }
 
     /**
@@ -198,16 +195,11 @@ contract APIConsumer is
         uint[] calldata _winner3
     ) external virtual recordChainlinkFulfillment(_requestId) {
         if (timeLeft() != 0) revert YouHaveToWait();
-        if (winner[0] != 0) revert AlreadyHaveWinner();
 
         recordWinnerResponse(_winner[0]);
         recordWinner2Response(_winner2[0]);
         recordWinner3Response(_winner3[0]);
-        winnerResponsesReceived++;
-        if (winnerResponsesReceived == i_jobId.length) {
-            // If any of the winners are not calculated, wait for more responses.
-            calculateModes();
-        }
+        calculateModes();
         // emit RequestWinner(_requestId, winner[0], winner[1], winner[2]);
     }
 

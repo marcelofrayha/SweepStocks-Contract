@@ -31,7 +31,9 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
     using BuyTokenChecks for *;
 
     uint private immutable i_leagueSize;
-    uint private constant c_initialValue = 1 ether / 10;
+    address private constant paperAddress =
+        0x1d847dE548F15F19C67eebb13c918d4163Ce6ADE;
+    uint private constant c_initialValue = 1 ether / 100;
     uint[3] public payout;
     // uint[3] public supply;
     bool private payoutDefined = false;
@@ -222,7 +224,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         // if (amount + totalSupply(id) > 1000000) {
         //     revert NFTReachedCap();
         // }
-        if (amount > 1000) {
+        if (amount > 1000 && msg.sender != paperAddress) {
             revert MintCap();
         }
         uint timeToEnd = timeLeft();
@@ -237,7 +239,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         _mint(account, id, amount, data);
         if (!isApprovedForAll(msg.sender, address(this)))
             setApprovalForAll(address(this), true);
-        mintPrice[id] += amount * 0.00013 ether;
+        mintPrice[id] += amount * 0.00033 ether;
         updateOwnersList(id, account);
         setTokenPrice(id, 1000000 ether);
         // tokenOwners[id][account] += amount;
@@ -350,9 +352,9 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
      * @param nftOwner The address of the current owner of the NFT.
      */
     function buyToken(uint id, uint amount, address nftOwner) public payable {
-        // if (winner[0] != 0) {
-        //     revert NotActive();
-        // }
+        if (winner[0] != 0) {
+            revert NotActive();
+        }
         address _owner = owner();
 
         BuyTokenChecks.buyToken(
@@ -460,15 +462,15 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         // emit WinnerPaid(msg.sender, amount);
     }
 
-    /**
-     * @dev Override function to update the owners' list when transferring NFTs.
-     * @param from The address transferring the NFT.
-     * @param to The address receiving the NFT.
-     * @param id The ID of the NFT being transferred.
-     * @param amount The quantity of NFTs being transferred.
-     * @param data Additional data for the transfer.
-     */
     function _safeTransferFrom(
+        /**
+         * @dev Override function to update the owners' list when transferring NFTs.
+         * @param from The address transferring the NFT.
+         * @param to The address receiving the NFT.
+         * @param id The ID of the NFT being transferred.
+         * @param amount The quantity of NFTs being transferred.
+         * @param data Additional data for the transfer.
+         */
         address from,
         address to,
         uint256 id,
@@ -479,16 +481,16 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         updateOwnersList(id, to);
     }
 
-    /**
-     * @dev Override function required by Solidity.
-     * @param operator The address that initiates the transfer.
-     * @param from The address from which tokens are transferred.
-     * @param to The address to which tokens are transferred.
-     * @param ids An array of NFT IDs being transferred.
-     * @param amounts An array specifying the quantity of each NFT being transferred.
-     * @param data Additional data for the transfer.
-     */
     function _beforeTokenTransfer(
+        /**
+         * @dev Override function required by Solidity.
+         * @param operator The address that initiates the transfer.
+         * @param from The address from which tokens are transferred.
+         * @param to The address to which tokens are transferred.
+         * @param ids An array of NFT IDs being transferred.
+         * @param amounts An array specifying the quantity of each NFT being transferred.
+         * @param data Additional data for the transfer.
+         */
         address operator,
         address from,
         address to,

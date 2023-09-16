@@ -10,7 +10,13 @@ library OraclesMode {
         mapping(uint => uint) storage valueCounts
     ) external returns (uint8) {
         if (values.length == 0) revert EmptyArray();
-
+        // Reset Counter
+        for (uint i = 0; i < values.length; ) {
+            valueCounts[values[i]] = 0;
+            unchecked {
+                i++;
+            }
+        }
         // Create a mapping to count the occurrences of each value
         // Initialize variables to track the mode
         uint8 modeValue;
@@ -18,13 +24,12 @@ library OraclesMode {
 
         // Iterate through the array to count occurrences
         for (uint i = 0; i < values.length; ) {
-            uint8 value = values[i];
-            valueCounts[value]++;
+            valueCounts[values[i]]++;
 
             // Update mode if a new maximum count is reached
-            if (valueCounts[value] > maxCount) {
-                maxCount = valueCounts[value];
-                modeValue = value;
+            if (valueCounts[values[i]] > maxCount) {
+                maxCount = valueCounts[values[i]];
+                modeValue = values[i];
             }
             unchecked {
                 i++;
