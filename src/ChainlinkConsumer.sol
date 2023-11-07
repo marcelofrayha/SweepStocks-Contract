@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13 .0;
 
-import {Chainlink, ChainlinkClient} from '@chainlink/contracts/src/v0.8/ChainlinkClient.sol';
-import {ConfirmedOwner} from '@chainlink/contracts/src/v0.8/ConfirmedOwner.sol';
-import {AutomationCompatibleInterface} from '@chainlink/contracts/src/v0.8/AutomationCompatible.sol';
-import {LinkTokenInterface} from '@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol';
+import {Chainlink, ChainlinkClient} from 'node_modules/@chainlink/contracts/src/v0.8/ChainlinkClient.sol';
+import {ConfirmedOwner} from 'node_modules/@chainlink/contracts/src/v0.8/ConfirmedOwner.sol';
+import {AutomationCompatibleInterface} from 'node_modules/@chainlink/contracts/src/v0.8/AutomationCompatible.sol';
+import {LinkTokenInterface} from 'node_modules/@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol';
 import {OraclesMode} from './lib/OraclesMode.sol';
 import {VerifyLeague} from './lib/VerifyLeague.sol';
 
