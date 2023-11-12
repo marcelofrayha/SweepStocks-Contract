@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13 .0;
+pragma solidity ^0.8.13;
 
 import {ERC1155} from '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import {ERC1155Supply} from '@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol';
@@ -236,12 +236,10 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         if (msg.value < mintPrice[id] * amount) {
             revert NotEnoughValue();
         }
-        _mint(account, id, amount, data);
         if (!isApprovedForAll(msg.sender, address(this)))
             setApprovalForAll(address(this), true);
-        mintPrice[id] += amount * 0.00033 ether;
-        updateOwnersList(id, account);
-        setTokenPrice(id, 1000000 ether);
+        _mint(account, id, amount, data);
+        
         // tokenOwners[id][account] += amount;
     }
 
@@ -268,6 +266,8 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
             revert NotActive();
         }
         uint msgValue = msg.value;
+        if (!isApprovedForAll(msg.sender, address(this)))
+            setApprovalForAll(address(this), true);
         for (uint i = 0; i < ids.length; ) {
             // if (amounts[i] + totalSupply(ids[i]) > 1000000) {
             //     revert NFTReachedCap();
@@ -280,17 +280,11 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
                 revert NotEnoughValue();
             }
             if (ids[i] > i_leagueSize) revert InvalidId();
-
-            mintPrice[ids[i]] += amounts[i] * 0.00013 ether;
-            updateOwnersList(ids[i], to);
-            setTokenPrice(ids[i], 1000000 ether);
             unchecked {
                 i++;
             }
         }
         _mintBatch(to, ids, amounts, data);
-        if (!isApprovedForAll(msg.sender, address(this)))
-            setApprovalForAll(address(this), true);
     }
 
     /**
@@ -299,7 +293,7 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
      * This is to ensure no funds get stuck in the contract.
      */
     function destroy() public {
-        if (block.timestamp < i_creationTime + 300 days) revert();
+        if (block.timestamp < i_creationTime + 3 days) revert();
         address _owner = owner();
         payable(_owner).transfer(address(this).balance);
         winner[0] = 100;
@@ -332,8 +326,14 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
      * @param id The ID of the NFT for which the price is set.
      * @param price The price in Ether to set for the NFT.
      */
-    function setTokenPrice(uint id, uint price) public {
-        if (balanceOf(msg.sender, id) == 0) {
+    function _setTokenPrice(address to, uint id, uint price) internal {
+        transferPrice[id][to] = price;
+        calculateAllPrices();
+        // emit TokenPriceSet(id, msg.sender, price);
+    }
+
+       function setTokenPrice(uint id, uint price) public {
+        if (balanceOf(msg.sender, id) == 0 ) {
             revert NotOwner();
         }
         // if (price == 0) {
@@ -395,7 +395,6 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         if (!success) {
             revert CallFailed();
         }
-        if (balanceOf(nftOwner, id) == 0) calculateAllPrices();
         // emit TokenBought(
         //     id,
         //     nftOwner,
@@ -431,8 +430,8 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
             revert NotActive();
         }
         if (
-            balanceOf(msg.sender, winner[0]) == 0 ||
-            balanceOf(msg.sender, winner[1]) == 0 ||
+            balanceOf(msg.sender, winner[0]) == 0 &&
+            balanceOf(msg.sender, winner[1]) == 0 &&
             balanceOf(msg.sender, winner[2]) == 0
         ) {
             revert NotOwner();
@@ -444,17 +443,17 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         address garbage = 0x8431717927C4a3343bCf1626e7B5B1D31E240406;
         if (balanceOf(msg.sender, winner[0]) != 0) {
             balance = balanceOf(msg.sender, winner[0]);
-            amount = (payout[0] * balance) / totalSupply(0);
+            amount = (payout[0] * balance) / totalSupply(winner[0]);
             _safeTransferFrom(msg.sender, garbage, winner[0], balance, '');
         }
         if (balanceOf(msg.sender, winner[1]) != 0) {
             balance = balanceOf(msg.sender, winner[1]);
-            amount += (payout[1] * balance) / totalSupply(1);
+            amount += (payout[1] * balance) / totalSupply(winner[1]);
             _safeTransferFrom(msg.sender, garbage, winner[1], balance, '');
         }
         if (balanceOf(msg.sender, winner[2]) != 0) {
             balance = balanceOf(msg.sender, winner[2]);
-            amount += (payout[2] * balance) / totalSupply(2);
+            amount += (payout[2] * balance) / totalSupply(winner[2]);
             _safeTransferFrom(msg.sender, garbage, winner[2], balance, '');
         }
         payoutDefined = true;
@@ -462,42 +461,55 @@ contract SweepStocks is ERC1155, ERC1155Supply, ConfirmedOwner, APIConsumer {
         // emit WinnerPaid(msg.sender, amount);
     }
 
-    function _safeTransferFrom(
-        /**
-         * @dev Override function to update the owners' list when transferring NFTs.
-         * @param from The address transferring the NFT.
-         * @param to The address receiving the NFT.
-         * @param id The ID of the NFT being transferred.
-         * @param amount The quantity of NFTs being transferred.
-         * @param data Additional data for the transfer.
-         */
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes memory data
-    ) internal override {
-        super._safeTransferFrom(from, to, id, amount, data);
-        updateOwnersList(id, to);
-    }
+    // function safeTransferFrom(
+    //     /**
+    //      * @dev Override function to update the owners' list when transferring NFTs.
+    //      * @param from The address transferring the NFT.
+    //      * @param to The address receiving the NFT.
+    //      * @param id The ID of the NFT being transferred.
+    //      * @param amount The quantity of NFTs being transferred.
+    //      * @param data Additional data for the transfer.
+    //      */
+    //     address from,
+    //     address to,
+    //     uint256 id,
+    //     uint256 amount,
+    //     bytes memory data
+    // ) public override {
+    //     super._safeTransferFrom(from, to, id, amount, data);
+    //     updateOwnersList(id, to);
+    // }
 
-    function _beforeTokenTransfer(
-        /**
-         * @dev Override function required by Solidity.
-         * @param operator The address that initiates the transfer.
-         * @param from The address from which tokens are transferred.
-         * @param to The address to which tokens are transferred.
-         * @param ids An array of NFT IDs being transferred.
-         * @param amounts An array specifying the quantity of each NFT being transferred.
-         * @param data Additional data for the transfer.
-         */
-        address operator,
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
+    // function _beforeTokenTransfer(
+    //     /**
+    //      * @dev Override function required by Solidity.
+    //      * @param operator The address that initiates the transfer.
+    //      * @param from The address from which tokens are transferred.
+    //      * @param to The address to which tokens are transferred.
+    //      * @param ids An array of NFT IDs being transferred.
+    //      * @param amounts An array specifying the quantity of each NFT being transferred.
+    //      * @param data Additional data for the transfer.
+    //      */
+    //     address operator,
+    //     address from,
+    //     address to,
+    //     uint256[] memory ids,
+    //     uint256[] memory amounts,
+    //     bytes memory data
+    // ) internal override(ERC1155, ERC1155Supply) {
+    //     super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+    // }
+
+    function _update(
+        address from, address to, uint256[] memory ids, uint256[] memory values
     ) internal override(ERC1155, ERC1155Supply) {
-        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+        super._update(from, to, ids, values);
+        for (uint i; i < ids.length; i++) {
+            updateOwnersList(ids[i], to);
+            if (transferPrice[ids[i]][to] == 0) _setTokenPrice(to, ids[i], 1000000 ether);
+            if (from == address(0)) mintPrice[ids[i]] += values[i] * 0.00033 ether;
+            if (from != address(0) && balanceOf(from, ids[i]) == 0) calculateAllPrices();
+
+        }
     }
 }
